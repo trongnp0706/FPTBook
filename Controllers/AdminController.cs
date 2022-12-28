@@ -1,21 +1,21 @@
-using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Linq;
-using System.Threading.Tasks;
 using FPTBook.Data;
 using FPTBook.Models;
 using FPTBook.Utils;
 using FPTBook.ViewModels;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 namespace FPTBook.Controllers
 {
     [Authorize(Roles = "admin")]
-    public class AdminController:Controller
+    public class AdminController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
 
@@ -24,9 +24,9 @@ namespace FPTBook.Controllers
         private readonly ILogger<AdminController> _logger;
 
 
-        public AdminController(ILogger<AdminController> logger, 
-                                UserManager<ApplicationUser> userManager, 
-                                ApplicationDbContext context, 
+        public AdminController(ILogger<AdminController> logger,
+                                UserManager<ApplicationUser> userManager,
+                                ApplicationDbContext context,
                                 IPasswordHasher<ApplicationUser> passwordHash)
         {
             _logger = logger;
@@ -43,43 +43,43 @@ namespace FPTBook.Controllers
         [HttpGet]
         public IActionResult Users(string searchString = "")
         {
-        var result = _context.Users
-            .Join(_context.UserRoles, u => u.Id, ur => ur.UserId, (u, ur) => new { u, ur })
-            .Join(_context.Roles, ur => ur.ur.RoleId, r => r.Id, (ur, r) => new { ur, r }) 
-            .Select(c => new UserRolesViewModel()
+            var result = _context.Users.Where(ur => ur.Id != "AdminID123")
+                .Join(_context.UserRoles, u => u.Id, ur => ur.UserId, (u, ur) => new { u, ur })
+                .Join(_context.Roles, ur => ur.ur.RoleId, r => r.Id, (ur, r) => new { ur, r })
+                .Select(c => new UserRolesViewModel()
+                {
+                    Id = c.ur.u.Id,
+                    FullName = c.ur.u.FullName,
+                    Email = c.ur.u.Email,
+                    Address = c.ur.u.Address,
+                    Roles = c.r.Name
+                }).ToList().GroupBy(uv => new { uv.FullName, uv.Email, uv.Address, uv.Id })
+                .Select(r => new UserRolesViewModel()
+                {
+                    Id = r.Key.Id,
+                    FullName = r.Key.FullName,
+                    Email = r.Key.Email,
+                    Address = r.Key.Address,
+                    Roles = string.Join("", r.Select(c => c.Roles).ToArray())
+                    // Roles = char.
+                });
+            if (searchString != "" && searchString != null)
             {
-                Id = c.ur.u.Id,
-                FullName = c.ur.u.FullName,
-                Email = c.ur.u.Email,
-                Address = c.ur.u.Address,
-                Roles = c.r.Name
-            }).ToList().GroupBy(uv=> new { uv.FullName, uv.Email, uv.Address, uv.Id })
-            .Select(r=> new UserRolesViewModel()
+                result = result.Where(u => u.Email.Contains(searchString)
+                                    || u.FullName.Contains(searchString)
+                                    || u.Address.Contains(searchString)
+                                    || u.Roles.Contains(searchString))
+                                .ToList();
+            }
+            else
             {
-                Id = r.Key.Id,
-                FullName = r.Key.FullName,
-                Email = r.Key.Email,
-                Address = r.Key.Address,
-                Roles = string.Join("", r.Select(c=>c.Roles).ToArray())
-                // Roles = char.
-            });
-        if (searchString != "" && searchString != null)
-        {
-            result = result.Where(u => u.Email.Contains(searchString)
-                                || u.FullName.Contains(searchString)
-                                ||u.Address.Contains(searchString)
-                                || u.Roles.Contains(searchString))
-                            .ToList();
-        }
-        else
-        {
-            result = result.ToList();
+                result = result.ToList();
+            }
+
+            return View(result);
         }
 
-        return View(result);
-        }
-
-         private void Errors(IdentityResult result)
+        private void Errors(IdentityResult result)
         {
             foreach (IdentityError error in result.Errors)
                 ModelState.AddModelError("", error.Description);
@@ -87,25 +87,26 @@ namespace FPTBook.Controllers
 
 
         [HttpGet]
-        public  IActionResult Customers(string searchString = "")
+        public IActionResult Customers(string searchString = "")
         {
             var usersWithPermission = _userManager.GetUsersInRoleAsync(Role.CUSTOMER).Result;
             // usersWithPermission = (IList<ApplicationUser>)usersWithPermission.Select(u=>u.Email.Contains(searchString)).ToList();
             if (searchString != "" && searchString != null)
             {
                 usersWithPermission = usersWithPermission.Where(
-                                    u=>u.Email.Contains(searchString)
+                                    u => u.Email.Contains(searchString)
                                     || u.FullName.Contains(searchString)
                                     || u.Address.Contains(searchString))
                                     .ToList();
-            }else
+            }
+            else
             {
                 usersWithPermission = usersWithPermission.ToList();
             }
             return View(usersWithPermission);
         }
-         [HttpGet]
-        public IActionResult StoreOwners(string searchString ="")
+        [HttpGet]
+        public IActionResult StoreOwners(string searchString = "")
         {
             var usersWithPermission = _userManager.GetUsersInRoleAsync(Role.OWNER).Result;
 
@@ -113,11 +114,12 @@ namespace FPTBook.Controllers
             if (searchString != "" && searchString != null)
             {
                 usersWithPermission = usersWithPermission.Where(
-                                    u=>u.Email.Contains(searchString)
+                                    u => u.Email.Contains(searchString)
                                     || u.FullName.Contains(searchString)
                                     || u.Address.Contains(searchString))
                                     .ToList();
-            }else
+            }
+            else
             {
                 usersWithPermission = usersWithPermission.ToList();
             }
@@ -133,7 +135,7 @@ namespace FPTBook.Controllers
             else
                 return RedirectToAction("Customers");
         }
-         [HttpPost]
+        [HttpPost]
         public async Task<IActionResult> ChangePassword(string id, string password)
         {
             ApplicationUser user = await _userManager.FindByIdAsync(id);
@@ -150,17 +152,17 @@ namespace FPTBook.Controllers
                     IdentityResult result = await _userManager.UpdateAsync(user);
                     if (result.Succeeded)
                     {
-                         _logger.LogInformation("User changed their password successfully.");
-                        TempData["AlertMessage"]= "User changed their password successfully.";
+                        _logger.LogInformation("User changed their password successfully.");
+                        TempData["AlertMessage"] = "User changed their password successfully.";
                         return RedirectToAction();
 
-                    }                        
+                    }
                     else
                         Errors(result);
                 }
             }
             else
-                ModelState.AddModelError("", "User Not Found");;
+                ModelState.AddModelError("", "User Not Found"); ;
             return RedirectToAction();
         }
         [HttpGet]
@@ -172,7 +174,8 @@ namespace FPTBook.Controllers
                 genres = _context.Genres
                 .Where(g => g.Description.Contains(searchString))
                 .ToList();
-            }else
+            }
+            else
             {
                 genres = _context.Genres.ToList();
             }
@@ -189,7 +192,7 @@ namespace FPTBook.Controllers
             return View(genres);
         }
         //Approve Genre
-         public IActionResult ApproveGenre(int id)
+        public IActionResult ApproveGenre(int id)
         {
             var genreInDb = _context.Genres.SingleOrDefault(t => t.Id == id);
             if (genreInDb is null)
@@ -205,11 +208,11 @@ namespace FPTBook.Controllers
                 NotiStatus = Enums.NotiCheck.unSeen
             };
             _context.Add(noti);
-            
+
             _context.SaveChanges();
             return RedirectToAction("GenreApproval");
         }
-          public IActionResult RejectGenre(int id)
+        public IActionResult RejectGenre(int id)
         {
             var genreInDb = _context.Genres.SingleOrDefault(t => t.Id == id);
             if (genreInDb is null)
@@ -237,22 +240,27 @@ namespace FPTBook.Controllers
             if (genreInDb != null)
             {
 
-                var genreView = new Genre(){
+                var genreView = new Genre()
+                {
                     Id = genreInDb.Id,
                     Description = genreInDb.Description,
                     Status = genreInDb.Status
                 };
                 return View(genreView);
-                
-            }else{
+
+            }
+            else
+            {
                 return NotFound();
             }
         }
         [HttpPost]
-         public async Task<IActionResult> UpdateGenre(Genre viewGenre){
+        public async Task<IActionResult> UpdateGenre(Genre viewGenre)
+        {
             if (ModelState.IsValid)
             {
-                var genre = new Genre(){
+                var genre = new Genre()
+                {
                     Id = viewGenre.Id,
                     Description = viewGenre.Description,
                     Status = viewGenre.Status
@@ -262,23 +270,24 @@ namespace FPTBook.Controllers
                 TempData["successMessage"] = "Update SuccessFully";
                 return RedirectToAction("GenreList");
             }
-            else{
+            else
+            {
                 return NotFound();
             }
-         }
-         [HttpGet]
-        public async Task<IActionResult>  Delete(int id)
+        }
+        [HttpGet]
+        public async Task<IActionResult> Delete(int id)
         {
             var genreInDb = _context.Genres.SingleOrDefault(t => t.Id == id);
             if (genreInDb is null)
             {
                 return NotFound();
             }
-     
+
             _context.Genres.Remove(genreInDb);
             _context.SaveChanges();
             return RedirectToAction("GenreList");
         }
-        
+
     }
 }
