@@ -275,15 +275,15 @@ namespace FPTBook.Controllers
                 return NotFound();
             }
         }
+
         [HttpGet]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> DeleteGenre(int id)
         {
             var genreInDb = _context.Genres.SingleOrDefault(t => t.Id == id);
             if (genreInDb is null)
             {
                 return NotFound();
             }
-
             _context.Genres.Remove(genreInDb);
             _context.SaveChanges();
             return RedirectToAction("GenreList");
